@@ -1,6 +1,6 @@
 import os
-import urllib, urllib2
-import urlparse
+import urllib, urllib.request as urllib2
+import urllib.parse as urlparse
 
 import requests
 
@@ -10,14 +10,15 @@ def http_get(url, headers=None, cook=None):
     try:
         r = requests.get(url, headers=headers, cookies=cook).content
         return r
-    except urllib2.URLError, e:
+    except urllib2.URLError as e:
         return ''
 
 def http_post(url, cookie_file='', postData={}, data=''):
     try:
         if (data != ''):
             postData = dict(urlparse.parse_qsl(data))
-        net = Net(cookie_file=cookie_file)
-        return net.http_POST(url,postData).content
-    except urllib2.URLError, e:
+        # net = net(cookie_file=cookie_file)
+        # return net.http_POST(url,postData).content
+        return requests.post(url, postData).content
+    except urllib2.URLError as e:
         return ''
