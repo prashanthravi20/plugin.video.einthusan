@@ -76,8 +76,11 @@ def inner_categories(name, url, language, mode, bluray=False):
 
     addDir('A-Z', postData, 8, img_path + 'a_z.png', language)
     addDir('Years', postData, 9, img_path + 'years.png', language)
-    # addDir('[COLOR red]Actors[/COLOR]', postData, 10, img_path + 'actors.png', language)
-    #addDir('[COLOR red]Director[/COLOR]', postData, 11, img_path + 'director.png', language)
+    addDir('Actors', postData,
+           10, img_path + 'actors.png', language)
+    addDir('Director', postData,
+           11, img_path + 'director.png', language)
+    addDir('Composer', postData, 17, '', language)
     addDir('Recent', postData, 3, img_path + 'recent.png', language)
     addDir('Top Rated', postData, 5, img_path + 'top_rated.png', language)
     if not bluray:
@@ -86,7 +89,7 @@ def inner_categories(name, url, language, mode, bluray=False):
         addDir('Search', postData, 6, img_path +
                'Search_by_title.png', language)
         # addDir('[COLOR red]Music Video[/COLOR]', '' , 14, img_path + 'music_videos.png', language)
-        #addDir('Mp3 Music', '', 16, '', language)
+        # addDir('Mp3 Music', '', 16, '', language)
     xbmcplugin.endOfDirectory(int(sys.argv[1]))
 
 ##
@@ -225,7 +228,7 @@ def show_recent_sections(name, url, language, mode):
     postData = BASE_URL + '/movie/results/?'+url + '&find='
     addDir('Recently Posted',  postData + 'Recent',
            1, img_path + 'recently_added.png')
-    #addDir('[COLOR red]Recently Viewed[/COLOR]', postData + 'RecentlyViewed', 15, img_path + 'recently_viewed.png')
+    # addDir('[COLOR red]Recently Viewed[/COLOR]', postData + 'RecentlyViewed', 15, img_path + 'recently_viewed.png')
     xbmcplugin.endOfDirectory(int(sys.argv[1]))
 
 # Shows the movie in the homepage..
@@ -252,7 +255,7 @@ def show_featured_movies(name, url, language, mode):
         allmatches.append((image, link, name, ishd))
 
     for img, id, name, ishd in allmatches:
-        print ("this is id" + id)
+        print("this is id" + id)
         movieid = id
         print(movieid)
         movielang = lang
@@ -287,10 +290,14 @@ def show_top_rated_options(name, url, language, mode):
     img_path = cwd + '/images/'
 
     postData = BASE_URL + '/movie/results/?'+url + '&find=Rating&'
-    addDir('Romance', postData + 'action=0&comedy=0&romance=4&storyline=0&performance=0&ratecount=1', 1, img_path + 'romance.png')
-    addDir('Comedy', postData + 'action=0&comedy=4&romance=0&storyline=0&performance=0&ratecount=1', 1, img_path + 'comedy.png')
-    addDir('Action', postData + 'action=4&comedy=0&romance=0&storyline=0&performance=0&ratecount=1', 1, img_path + 'action.png')
-    addDir('Storyline', postData + 'action=0&comedy=0&romance=0&storyline=4&performance=0&ratecount=1', 1, img_path + 'storyline.png')
+    addDir('Romance', postData + 'action=0&comedy=0&romance=4&storyline=0&performance=0&ratecount=1',
+           1, img_path + 'romance.png')
+    addDir('Comedy', postData + 'action=0&comedy=4&romance=0&storyline=0&performance=0&ratecount=1',
+           1, img_path + 'comedy.png')
+    addDir('Action', postData + 'action=4&comedy=0&romance=0&storyline=0&performance=0&ratecount=1',
+           1, img_path + 'action.png')
+    addDir('Storyline', postData + 'action=0&comedy=0&romance=0&storyline=4&performance=0&ratecount=1',
+           1, img_path + 'storyline.png')
     addDir('Performance', postData + 'action=0&comedy=0&romance=0&storyline=0&performance=4&ratecount=1',
            1, img_path + 'performance.png')
     xbmcplugin.endOfDirectory(int(sys.argv[1]))
@@ -318,24 +325,36 @@ def show_A_Z(name, url, language, mode):
 ##
 
 
-def show_list(name, b_url, language, mode):
-    if (mode == 9):
-        postData = b_url + '&find=Year&year='
-        values = [repr(x)
-                  for x in reversed(range(1940, date.today().year + 1))]
-    elif (mode == 10):
-        postData = b_url + '&organize=Cast'
-        values = JSONInterface.get_actor_list(language)
-    else:
-        postData = b_url + '&organize=Director'
-        values = JSONInterface.get_director_list(language)
-
-    # postData = postData + '&filtered='
-
+def show_year_list(name, b_url, language, mode):
+    postData = b_url + '&find=Year&year='
+    values = [repr(x)
+              for x in reversed(range(1940, date.today().year + 1))]
     for attr_value in values:
         if (attr_value != None):
             addDir(attr_value, BASE_URL+'/movie/results/?' +
                    postData + str(attr_value), 1, '')
+    xbmcplugin.endOfDirectory(int(sys.argv[1]))
+
+
+def show_list(name, b_url, language, mode):
+    if (mode == 10):
+        postData = BASE_URL + '/movie/browse/?' + b_url
+        values = JSONInterface.get_cast_helper(postData, '', language)
+    elif (mode == 17):
+        postData = BASE_URL + '/movie/browse/?' + b_url
+        values = JSONInterface.get_cast_helper(
+            postData, 'MUSIC_DIRECTOR', language)
+    else:
+        postData = BASE_URL + '/movie/browse/?' + b_url
+        values = JSONInterface.get_cast_helper(postData, 'DIRECTOR', language)
+    for val in values:
+        # xbmc.log("url="+BASE_URL+'/movie/results/?' + b_url +
+        #          '&find=Cast&id='+val['actorid'] + '&role='+val['role'], level=xbmc.LOGINFO)
+        if (name != None):
+            addDir(val['name'], BASE_URL+'/movie/results/?' + b_url +
+                   '&find=Cast&id='+val['actorid'] + '&role='+val['role'], 1, val['image'])
+
+    # postData = postData + '&filtered='
 
     xbmcplugin.endOfDirectory(int(sys.argv[1]))
 
@@ -492,7 +511,8 @@ def get_movie(s, mainurl, mainurlajax, headers=None):
     urlnew = lnk+('|'+BASE_URL+'&Referer=%s&User-Agent=%s' % (mainurl,
                                                               'Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/55.0.2883.87 Safari/537.36'))
     listitem = xbmcgui.ListItem(label=str(name))
-    listitem.setArt({'icon':'DefaultVideo.png', 'thumb':xbmc.getInfoImage("ListItem.Thumb")})
+    listitem.setArt({'icon': 'DefaultVideo.png',
+                    'thumb': xbmc.getInfoImage("ListItem.Thumb")})
 
     # listitem =xbmcgui.ListItem(name)
     listitem.setProperty('IsPlayable', 'true')
@@ -628,7 +648,7 @@ def GUIEditExportName(name):
             exit = False
         else:
             break
-    return(name)
+    return (name)
 
 
 def playtrailer(name, url, language, mode):
@@ -647,7 +667,7 @@ def playtrailer(name, url, language, mode):
 
 def addLink(name, url, iconimage):
     liz = xbmcgui.ListItem(name)
-    liz.setArt({'icon':'DefaultVideo.png', 'thumb':iconimage})
+    liz.setArt({'icon': 'DefaultVideo.png', 'thumb': iconimage})
     liz.setInfo(type="Video", infoLabels={"Title": name})
     ok = xbmcplugin.addDirectoryItem(
         handle=int(sys.argv[1]), url=url, listitem=liz)
@@ -727,7 +747,7 @@ function_map[5] = show_top_rated_options
 function_map[6] = show_search_box
 function_map[7] = inner_categories
 function_map[8] = show_A_Z
-function_map[9] = show_list
+function_map[9] = show_year_list
 function_map[10] = show_list
 function_map[11] = show_list
 function_map[12] = display_setting
@@ -735,5 +755,6 @@ function_map[13] = display_BluRay_listings
 function_map[14] = list_music_videos
 function_map[15] = list_movies_from_JSON_API
 function_map[16] = mp3_menu
+function_map[17] = show_list
 
 function_map[mode](name, url, language, mode)
