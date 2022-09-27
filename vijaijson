@@ -14,7 +14,7 @@
 "get_nav_data_regex": "<a href=\\\"(?P<navlink>.*?)\\\">&larr;(\\s|)Older Entries"
  },
 {
-"url": "https://ww8.7movierulz.sk/category/bollywood-movie-2021",
+"url": "https://ww8.7movierulz.sk/category/bollywood-movie-2022",
 "title": "movierulz-Hindi",
 "get_site_content_regex": "<a href=\\\"(?P<pageurl>.*?)\\\"\\stitle=\\\"(?P<title>.*?)\\\">\\s*<img width=\\\"\\d+\\\" height=\\\"\\d+\\\" src=\\\"(?P<poster>.*?)\\\"",
 "get_stream_url_regex": "<p><strong>(?P<streamtitle>.*?)<\\\/strong><br \\\/>\\s+<a href=\\\"(?P<streamurl>.*?)\\\"",
@@ -28,7 +28,7 @@
 "get_nav_data_regex": "<a href=\\\"(?P<navlink>.*?)\\\">&larr;(\\s|)Older Entries"
 },
 {
-"url": "https://ww8.7movierulz.sk/category/hollywood-movie-2020/",
+"url": "https://ww8.7movierulz.sk/category/hollywood-movie-2021/",
 "title": "movierulz-Hollywood",
 "get_site_content_regex": "<a href=\\\"(?P<pageurl>.*?)\\\"\\stitle=\\\"(?P<title>.*?)\\\">\\s*<img width=\\\"\\d+\\\" height=\\\"\\d+\\\" src=\\\"(?P<poster>.*?)\\\"",
 "get_stream_url_regex": "<p><strong>(?P<streamtitle>.*?)<\\\/strong><br \\\/>\\s+<a href=\\\"(?P<streamurl>.*?)\\\"",
