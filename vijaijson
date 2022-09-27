@@ -37,9 +37,9 @@
 {
 "url": "https://tamilgun.bio/video-category/dubbed-movies/",
 "title": "TamilGun-DubbedMovies",
-"get_site_content_regex": "<img src=\\\" (?P<poster>.*?) \\\" alt=\\\"(?P<title>.*?)\\\" \\\/>\\s+<div class=\\\"rocky-effect\\\">\\s+<a href=\\\"(?P<pageurl>.*?)\\\"\\s>",
-"get_stream_url_regex": "<(iframe|IFRAME)(\\s|.*?)(src|SRC)=\\\"(?P<streamurl>.*?)\\\"|onclick=\\\"window\\.open\\(\\'(?P<streamurl1>.*?)\\'|sources:\\s+\\[{\\\"file\\\":\\\"(?P<streamurl2>.*?)\\\"}\\]",
-"get_nav_data_regex": "<a class=\"next page-numbers\" href=\"(?P<navlink>.*?)\">"
+"get_site_content_regex": "data-post-id=\\\"(.*?)\\\"\\sdata-post-type=\\\"vidmov_video\\\"\\shref=\\\"(?P<pageurl>.*?)\\\"\\stitle=\\\"(?P<title>.*?)\\\"\\sclass=\\\"(.*?)\\\"\\><img\\swidth=\\\"(.*?)\\\"\\sheight=\\\"(.*?)\\\"\\ssrc=\\\"(?P<poster>.*?)\\\"",
+"get_stream_url_regex": "unescape\\(\\'(?P<unescape>[^\\']+)|<(iframe|IFRAME)(\\s|.*?)(src|SRC)=\\\"(?P<streamurl>.*?)\\\"|onclick=\\\"window\\.open\\(\\'(?P<streamurl1>.*?)\\'|sources:\\s+\\[{\\\"file\\\":\\\"(?P<streamurl2>.*?)\\\"}\\]|iframe\\swidth=\\\\\"(.*?)\\\"\\sheight=\\\\\"(.*?)\\\"\\ssrc=\\\\\"(?P<streamurl3>.*?)\\\"|beeteam\\d+_video_source\\\":\\\"(?P<streamurl4>.*?)\\\"",
+"get_nav_data_regex": "a\\sclass=\\\"nextpostslink\\\"\\srel=\\\"next\\\"\\saria-label=\\\"Next Page\\\"\\shref=\\\"(?P<navlink>.*?)\\\""
 },
 {
 "url": "https://tamilgun.com/video-category/hd-movies/",
