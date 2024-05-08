@@ -65,9 +65,11 @@ def addDir(name, url, mode, image, lang="", description="", isplayable=False):
 
     listitem = xbmcgui.ListItem(name)
     thumbnailImage = image
-    listitem.setArt({"icon": "DefaultFolder.png", "thumb": thumbnailImage})
-    listitem.setInfo(type="Video", infoLabels={
-                     "Title": name, "Plot": description})
+    listitem.setArt({"icon": "DefaultFolder.png", "thumb": thumbnailImage, "poster": image})
+    vinfo = listitem.getVideoInfoTag()
+    vinfo.setTitle(name)
+    vinfo.setPlot(description)
+    
     listitem.setProperty("IsPlayable", "true")
     isfolder = True
     if isplayable:
