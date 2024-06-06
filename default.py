@@ -355,7 +355,7 @@ def browse_results(name, url, language, mode):
 def list_videos(url, pattern):
     video_list = scrape_videos(url, pattern)
 
-    if video_list[-1][6] != "":
+    if len(video_list) > 0 and video_list[-1][6] != "":
         next_page_list = scrape_videos(BASE_URL + video_list[-1][6], pattern)
         for next_page_item in next_page_list:
             video_list.append(next_page_item)
@@ -399,7 +399,7 @@ def list_videos(url, pattern):
                 isplayable=True,
             )
 
-    if video_list[-1][6] != "":
+    if len(video_list) > 0 and video_list[-1][6] != "":
         addDir(">>> Next Page >>>", BASE_URL + video_list[-1][6], 11, "")
 
     xbmcplugin.endOfDirectory(int(sys.argv[1]))
