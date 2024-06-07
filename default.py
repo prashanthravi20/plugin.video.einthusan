@@ -53,7 +53,7 @@ def addLog(message, level="notice"):
         xbmc.log(str(message), level=xbmc.LOGINFO)
 
 
-def addDir(name, url, mode, image, lang="", description="", isplayable=False):
+def addDir(name, url, mode, image, lang="", description="", imdbId="", isplayable=False):
     u = (
         URL
         + "?url="
@@ -70,20 +70,52 @@ def addDir(name, url, mode, image, lang="", description="", isplayable=False):
 
     xbmcplugin.setContent(HANDLE, 'movies')
     listitem = xbmcgui.ListItem(name)
-    thumbnailImage = image
-    listitem.setArt({"icon": "DefaultFolder.png", "thumb": thumbnailImage, "fanart": image})
-    
+    listitem.setArt({"icon": "DefaultFolder.png", "thumb": image , "fanart": image})
     vinfo = listitem.getVideoInfoTag()
-    vinfo.setMediaType('movie')
-
+    vinfo.setMediaType('video')    
     vinfo.setTitle(name)
-    vinfo.setPlot(description)
-    vinfo.setGenres(["Drama"])
     
-    listitem.setProperty("IsPlayable", "true")
     isfolder = True
     if isplayable:
         isfolder = False
+        vinfo.setMediaType('movie')
+        listitem.setProperty("IsPlayable", "true")
+        try:
+            movie_data = getMovieDataFromTMDB(imdbId)
+        except:                
+            vinfo.setPlot(description)
+            vinfo.setGenres(["Drama"])
+        else:
+            # Extract Fanart URL
+            fanart_path = movie_data['backdrop_path']
+            if fanart_path == '' or fanart_path == None:
+                fanArt = image
+            else:    
+                fanArt = f'https://image.tmdb.org/t/p/original{fanart_path}'
+            listitem.setArt({"icon": "DefaultFolder.png", "fanart": fanArt})
+
+            release_date_str = movie_data['release_date']
+            date_object = datetime.datetime.strptime(release_date_str, '%Y-%m-%d').date()
+            vinfo.setYear(date_object.year)
+            vinfo.setRating(movie_data['vote_average'], movie_data['vote_count'])
+
+            plot = movie_data['overview']
+            if plot == '':
+                plot = description
+            vinfo.setPlot(plot)
+            vinfo.setOriginalTitle(movie_data['original_title'])
+
+            # Convert JSON data to a Python object 
+            genreTempStr = str(movie_data["genres"])
+            genreTempStr = genreTempStr.replace("\'", "\"")
+            genresObjArray = json.loads(genreTempStr)
+            genresArray = [genre["name"] for genre in genresObjArray]
+            vinfo.setGenres(genresArray)
+
+            durationMin = movie_data['runtime']
+
+            vinfo.setDuration(durationMin*60)
+            vinfo.setIMDBNumber(movie_data['imdb_id'])
     ok = xbmcplugin.addDirectoryItem(
         HANDLE, url=u, listitem=listitem, isFolder=isfolder
     )
@@ -107,6 +139,26 @@ def get_params():
                 param[splitparams[0]] = splitparams[1]
     return param
 
+def getMovieDataFromTMDB(imdbId):
+    # Your TMDb API key
+    API_KEY = __settings__.getSetting("tmdb_api_key")
+    IMDB_ID = imdbId  # Example IMDb ID for "The Shawshank Redemption"
+
+    # Step 1: Convert IMDb ID to TMDb ID
+    url = f'https://api.themoviedb.org/3/find/{IMDB_ID}?api_key={API_KEY}&external_source=imdb_id'
+    response = requests.get(url)
+    data = response.json()
+
+    # Extract the TMDb ID
+    tmdb_id = data['movie_results'][0]['id']
+
+    # Step 2: Fetch Movie Details using TMDb ID
+    movie_url = f'https://api.themoviedb.org/3/movie/{tmdb_id}?api_key={API_KEY}'
+    movie_response = requests.get(movie_url)
+    movie_data = movie_response.json()
+    # addLog(movie_data)
+
+    return movie_data
 
 def select_lang(name, url, language, mode):
     addLog("BASE_URL: " + BASE_URL)
@@ -365,8 +417,8 @@ def browse_results(name, url, language, mode):
 def list_videos(url, pattern):
     video_list = scrape_videos(url, pattern)
 
-    if len(video_list) > 0 and video_list[-1][6] != "":
-        next_page_list = scrape_videos(BASE_URL + video_list[-1][6], pattern)
+    if len(video_list) > 0 and video_list[-1][7] != "":
+        next_page_list = scrape_videos(BASE_URL + video_list[-1][7], pattern)
         for next_page_item in next_page_list:
             video_list.append(next_page_item)
 
@@ -379,6 +431,8 @@ def list_videos(url, pattern):
             video_item[0] + "," + video_item[1] +
             "," + video_item[2] + ",shd," + url
         )
+        # addLog('In list_videos before adddir')
+        # addLog(video_item)
         addDir(
             video_item[2],
             urldata,
@@ -386,6 +440,7 @@ def list_videos(url, pattern):
             image,
             video_item[0],
             video_item[5],
+            video_item[6],
             isplayable=True,
         )
 
@@ -406,28 +461,31 @@ def list_videos(url, pattern):
                 image,
                 video_item[0],
                 video_item[5],
+                video_item[6],
                 isplayable=True,
             )
 
-    if len(video_list) > 0 and video_list[-1][6] != "":
-        addDir(">>> Next Page >>>", BASE_URL + video_list[-1][6], 11, "")
+    if len(video_list) > 0 and video_list[-1][7] != "":
+        addDir(">>> Next Page >>>", BASE_URL + video_list[-1][7], 11, "")
 
     xbmcplugin.endOfDirectory(HANDLE)
 
 
 def scrape_videos(url, pattern):
     html1 = requests.get(url).text
+    # addLog(html1)
     results = []
     next_page = ""
     if pattern == "home":
-        regexstr = 'name="newrelease_tab".+?img src="(.+?)".+?href="\/movie\/watch\/(.+?)\/\?lang=(.+?)"><h2>(.+?)<\/h2>.+?i class=(.+?)<\/div>'
+        regexstr = 'name="newrelease_tab".+?img src="(.+?)".+?href="\/movie\/watch\/(.+?)\/\?lang=(.+?)"><h2>(.+?)<\/h2>.+?i class=(.+?)<\/div><div class="stats">(.+?)<\/div><\/div> <\/div><\/div><\/div>'
     else:
-        regexstr = '<div class="block1">.*?href=".*?watch\/(.*?)\/\?lang=(.*?)".*?<img src="(.+?)".+?<h3>(.+?)<\/h3>.+?i class(.+?)<p class=".*?synopsis">(.+?)<\/p>.+?<span>Wiki<'
+        regexstr = '<div class="block1">.*?href=".*?watch\/(.*?)\/\?lang=(.*?)".*?<img src="(.+?)".+?<h3>(.+?)<\/h3>.+?i class(.+?)<p class=".*?synopsis">(.+?)<\/p>(.+?)<\/a> <\/div>'
     video_matches = re.findall(regexstr, html1)
     next_matches = re.findall('data-disabled="([^"]*)" href="(.+?)"', html1)
     if len(next_matches) > 0 and next_matches[-1][0] != "true":
         next_page = next_matches[-1][1]
     for item in video_matches:
+        # addLog(item)
         movie_name = str(
             item[3].replace(",", "").encode("ascii", "ignore").decode("ascii")
         )
@@ -439,14 +497,24 @@ def scrape_videos(url, pattern):
             movie_id = item[1]
             lang = item[2]
             description = ""
+            if "imdb.com" in item[5]:
+                imdb_matches = re.findall('imdb.com\/title\/(.+?)\/', item[5])     
+                imdbId=imdb_matches[0]
+            else:
+                imdbId = ''
         else:
-            movie_id = item[0]
-            lang = item[1]
+            lang = item[0]
+            movie_id = item[1]            
             image = item[2]
             try:
                 description = item[5].encode("ascii", "ignore").decode("ascii")
             except:
                 description = ""
+            if "imdb.com" in item[6]:
+                imdb_matches = re.findall('imdb.com\/title\/(.+?)\/', item[6])                
+                imdbId=imdb_matches[0]
+            else:
+                imdbId = ''
         results.append(
             (
                 str(lang),
@@ -455,6 +523,7 @@ def scrape_videos(url, pattern):
                 str(movie_def),
                 str(image),
                 str(description),
+                str(imdbId),
                 str(next_page),
             )
         )
