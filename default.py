@@ -22,6 +22,11 @@ import urllib.request
 # import HTMLParser
 # from six.moves import urllib
 
+# Get the plugin url in plugin:// notation.
+URL = sys.argv[0]
+# Get a plugin handle as an integer number.
+HANDLE = int(sys.argv[1])
+
 __settings__ = xbmcaddon.Addon(id="plugin.video.einthusan")
 BASE_URL = __settings__.getSetting("base_url")
 USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/72.0.3626.121 Safari/537.36"
@@ -63,10 +68,14 @@ def addDir(name, url, mode, image, lang="", description="", isplayable=False):
         + urllib.parse.quote_plus(description)
     )
 
+    xbmcplugin.setContent(HANDLE, 'movies')
     listitem = xbmcgui.ListItem(name)
     thumbnailImage = image
-    listitem.setArt({"icon": "DefaultFolder.png", "thumb": thumbnailImage, "poster": image})
+    listitem.setArt({"icon": "DefaultFolder.png", "thumb": thumbnailImage, "fanart": image})
+    
     vinfo = listitem.getVideoInfoTag()
+    vinfo.setMediaType('movie')
+
     vinfo.setTitle(name)
     vinfo.setPlot(description)
     
