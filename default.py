@@ -35,7 +35,7 @@ CDN_ROOT = ".io"
 CDN_BASE_URL = "einthusan" + CDN_ROOT
 
 
-# locationStr = xbmcplugin.getSetting(int(sys.argv[1]), 'location')
+# locationStr = xbmcplugin.getSetting(HANDLE, 'location')
 # Locations = ['San Francisco', 'Dallas', 'Washington, D.C.',
 #              'Toronto', 'London', 'Sydney', 'No Preference']
 
@@ -55,7 +55,7 @@ def addLog(message, level="notice"):
 
 def addDir(name, url, mode, image, lang="", description="", isplayable=False):
     u = (
-        sys.argv[0]
+        URL
         + "?url="
         + urllib.parse.quote_plus(url)
         + "&mode="
@@ -78,13 +78,14 @@ def addDir(name, url, mode, image, lang="", description="", isplayable=False):
 
     vinfo.setTitle(name)
     vinfo.setPlot(description)
+    vinfo.setGenres(["Drama"])
     
     listitem.setProperty("IsPlayable", "true")
     isfolder = True
     if isplayable:
         isfolder = False
     ok = xbmcplugin.addDirectoryItem(
-        handle=int(sys.argv[1]), url=u, listitem=listitem, isFolder=isfolder
+        HANDLE, url=u, listitem=listitem, isFolder=isfolder
     )
     return ok
 
@@ -142,7 +143,7 @@ def select_lang(name, url, language, mode):
             image = ""
         addDir(title, "", 1, image, lang)
     addDir("Addon Settings", "", 2, "DefaultAddonService.png", "")
-    xbmcplugin.endOfDirectory(int(sys.argv[1]))
+    xbmcplugin.endOfDirectory(HANDLE)
 
 
 def select_menu(name, url, language, mode):
@@ -225,7 +226,7 @@ def select_menu(name, url, language, mode):
         language,
     )
 
-    xbmcplugin.endOfDirectory(int(sys.argv[1]))
+    xbmcplugin.endOfDirectory(HANDLE)
 
 
 def select_settings(name, url, language, mode):
@@ -237,13 +238,13 @@ def menu_alpha(name, url, language, mode):
     azlist = map(chr, list(range(65, 91)))
     for letter in azlist:
         addDir(letter, url + "&find=Alphabets&alpha=" + letter, 11, "")
-    xbmcplugin.endOfDirectory(int(sys.argv[1]))
+    xbmcplugin.endOfDirectory(HANDLE)
 
 
 def menu_years(name, url, language, mode):
     addDir("Decade", url, 6, "DefaultYear.png")
     addDir("Years", url, 7, "DefaultYear.png")
-    xbmcplugin.endOfDirectory(int(sys.argv[1]))
+    xbmcplugin.endOfDirectory(HANDLE)
 
 
 def submenu_decade(name, url, language, mode):
@@ -257,7 +258,7 @@ def submenu_decade(name, url, language, mode):
                 str(attr_value) + "s", postData +
                 str(attr_value), 11, "DefaultYear.png"
             )
-    xbmcplugin.endOfDirectory(int(sys.argv[1]))
+    xbmcplugin.endOfDirectory(HANDLE)
 
 
 def submenu_years(name, url, language, mode):
@@ -268,7 +269,7 @@ def submenu_years(name, url, language, mode):
     for attr_value in values:
         if attr_value != None:
             addDir(attr_value, postData + str(attr_value), 11, "DefaultYear.png")
-    xbmcplugin.endOfDirectory(int(sys.argv[1]))
+    xbmcplugin.endOfDirectory(HANDLE)
 
 
 def menu_rating(name, url, language, mode):
@@ -303,7 +304,7 @@ def menu_rating(name, url, language, mode):
         11,
         "",
     )
-    xbmcplugin.endOfDirectory(int(sys.argv[1]))
+    xbmcplugin.endOfDirectory(HANDLE)
 
 
 def menu_cast(name, url, language, mode):
@@ -320,7 +321,7 @@ def menu_cast(name, url, language, mode):
         addDir(val['name'], BASE_URL+'/movie/results/?' + postData +
                '&find=Cast&id='+val['actorid'] + '&role='+val['role'], 11, val['image'])
 
-    xbmcplugin.endOfDirectory(int(sys.argv[1]))
+    xbmcplugin.endOfDirectory(HANDLE)
 
 
 def get_cast_helper(url, attr, language):
@@ -411,7 +412,7 @@ def list_videos(url, pattern):
     if len(video_list) > 0 and video_list[-1][6] != "":
         addDir(">>> Next Page >>>", BASE_URL + video_list[-1][6], 11, "")
 
-    xbmcplugin.endOfDirectory(int(sys.argv[1]))
+    xbmcplugin.endOfDirectory(HANDLE)
 
 
 def scrape_videos(url, pattern):
@@ -480,7 +481,7 @@ def play_video(name, url, language, mode):
     if result == False:
         return False
 
-    xbmcplugin.endOfDirectory(int(sys.argv[1]))
+    xbmcplugin.endOfDirectory(HANDLE)
 
 
 def get_video(s, language, movieid, hdtype, refererurl, oldejp=""):
@@ -578,7 +579,7 @@ def get_video(s, language, movieid, hdtype, refererurl, oldejp=""):
     listitem.setArt({"icon": "DefaultVideo.png", "thumb": thumbnailImage})
     listitem.setProperty("IsPlayable", "true")
     listitem.setPath(url2)
-    xbmcplugin.setResolvedUrl(int(sys.argv[1]), True, listitem)
+    xbmcplugin.setResolvedUrl(HANDLE, True, listitem)
 
     s.close()
 
