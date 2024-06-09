@@ -53,7 +53,7 @@ def addLog(message, level="notice"):
         xbmc.log(str(message), level=xbmc.LOGINFO)
 
 
-def addDir(name, url, mode, image, lang="", description="", imdbId="", isplayable=False):
+def addDir(name, url, mode, image, lang="", description="", imdbId="", isplayable=False, isUhd=False):
     u = (
         URL
         + "?url="
@@ -69,11 +69,12 @@ def addDir(name, url, mode, image, lang="", description="", imdbId="", isplayabl
     )
 
     xbmcplugin.setContent(HANDLE, 'movies')
-    listitem = xbmcgui.ListItem(name)
+    movieTitle = name + "[COLOR blue] - Ultra HD[/COLOR]" if isUhd==True else name
+    listitem = xbmcgui.ListItem(movieTitle)
     listitem.setArt({"icon": "DefaultFolder.png", "thumb": image })
     vinfo = listitem.getVideoInfoTag()
-    vinfo.setMediaType('video')    
-    vinfo.setTitle(name)
+    vinfo.setMediaType('video')
+    vinfo.setTitle(movieTitle)
     
     isfolder = True
     if isplayable:
@@ -82,45 +83,55 @@ def addDir(name, url, mode, image, lang="", description="", imdbId="", isplayabl
         listitem.setProperty("IsPlayable", "true")
         try:
             movie_data = getMovieDataFromTMDB(imdbId)
-        except:                
-            vinfo.setPlot(description)
-            vinfo.setGenres(["Drama"])
-            listitem.setArt({"fanart": image })
+        except:
+            try:
+                movie_data = getMovieDataByMovieTitleFromTMDB(name, lang)
+            except:
+                vinfo.setPlot(description)
+                vinfo.setGenres(["Drama"])
+                listitem.setArt({"fanart": image })
+            else:
+                setVideoInfo(listitem, movie_data, vinfo, image, description)
         else:
-            # Extract Fanart URL
-            fanart_path = movie_data['backdrop_path']
-            if fanart_path == '' or fanart_path == None:
-                fanArt = image
-            else:    
-                fanArt = f'https://image.tmdb.org/t/p/original{fanart_path}'
-            listitem.setArt({"fanart": fanArt})
-
-            release_date_str = movie_data['release_date']
-            date_object = datetime.datetime.strptime(release_date_str, '%Y-%m-%d').date()
-            vinfo.setYear(date_object.year)
-            vinfo.setRating(movie_data['vote_average'], movie_data['vote_count'])
-
-            plot = movie_data['overview']
-            if plot == '':
-                plot = description
-            vinfo.setPlot(plot)
-            vinfo.setOriginalTitle(movie_data['original_title'])
-
-            # Convert JSON data to a Python object 
-            genreTempStr = str(movie_data["genres"])
-            genreTempStr = genreTempStr.replace("\'", "\"")
-            genresObjArray = json.loads(genreTempStr)
-            genresArray = [genre["name"] for genre in genresObjArray]
-            vinfo.setGenres(genresArray)
-
-            durationMin = movie_data['runtime']
-
-            vinfo.setDuration(durationMin*60)
-            vinfo.setIMDBNumber(movie_data['imdb_id'])
+            setVideoInfo(listitem, movie_data, vinfo, image, description)
     ok = xbmcplugin.addDirectoryItem(
         HANDLE, url=u, listitem=listitem, isFolder=isfolder
     )
     return ok
+
+def setVideoInfo(listitem, movie_data, vinfo, image, movie_description):
+    # Extract Fanart URL
+    fanart_path = movie_data['backdrop_path']
+    if fanart_path == '' or fanart_path == None:
+        fanArt = image
+    else:    
+        fanArt = f'https://image.tmdb.org/t/p/original{fanart_path}'
+    listitem.setArt({"fanart": fanArt})
+
+    release_date_str = movie_data['release_date']
+    date_object = datetime.datetime.strptime(release_date_str, '%Y-%m-%d').date()
+    vinfo.setYear(date_object.year)
+    vinfo.setRating(movie_data['vote_average'], movie_data['vote_count'])
+
+    plot = movie_data['overview']
+    if plot == '':
+        plot = movie_description
+    vinfo.setPlot(plot)
+    vinfo.setOriginalTitle(movie_data['original_title'])
+
+    # Convert JSON data to a Python object 
+    genreTempStr = str(movie_data["genres"])
+    genreTempStr = genreTempStr.replace("\'", "\"")
+    genresObjArray = json.loads(genreTempStr)
+    genresArray = [genre["name"] for genre in genresObjArray]
+    if len(genresArray)==0:
+        genresArray = ['Drama']
+    vinfo.setGenres(genresArray)
+
+    durationMin = movie_data['runtime']
+
+    vinfo.setDuration(durationMin*60)
+    vinfo.setIMDBNumber(movie_data['imdb_id'])            
 
 
 def get_params():
@@ -160,6 +171,31 @@ def getMovieDataFromTMDB(imdbId):
     # addLog(movie_data)
 
     return movie_data
+
+def getMovieDataByMovieTitleFromTMDB(movieTitle, language):
+    API_KEY = __settings__.getSetting("tmdb_api_key")
+    movie_name = movieTitle
+
+    # Step 1: Search for the movie
+    search_url = f'https://api.themoviedb.org/3/search/movie?api_key={API_KEY}&query={movie_name}'
+    response = requests.get(search_url)
+    search_results = response.json()
+
+    if search_results['results']:
+        # Filter movies in the selected language
+        filtered_movies = [movie for movie in search_results['results'] if movie['original_language'] == language[:2]]
+        if len(filtered_movies) > 1:
+            raise Exception("More than one results returned")
+        movie_id = filtered_movies[0]['id']
+        
+        # Step 2: Get movie details using the movie ID
+        movie_url = f'https://api.themoviedb.org/3/movie/{movie_id}?api_key={API_KEY}'
+        movie_response = requests.get(movie_url)
+        movie_data = movie_response.json()
+        
+        return movie_data
+    else:
+        raise Exception("No results returned")
 
 def select_lang(name, url, language, mode):
     addLog("BASE_URL: " + BASE_URL)
@@ -456,7 +492,7 @@ def list_videos(url, pattern):
                 + url
             )
             addDir(
-                video_item[2] + "[COLOR blue] - Ultra HD[/COLOR]",
+                video_item[2],
                 urldata,
                 10,
                 image,
@@ -464,6 +500,7 @@ def list_videos(url, pattern):
                 video_item[5],
                 video_item[6],
                 isplayable=True,
+                isUhd=True
             )
 
     if len(video_list) > 0 and video_list[-1][7] != "":
