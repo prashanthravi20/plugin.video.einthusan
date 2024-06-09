@@ -70,7 +70,7 @@ def addDir(name, url, mode, image, lang="", description="", imdbId="", isplayabl
 
     xbmcplugin.setContent(HANDLE, 'movies')
     listitem = xbmcgui.ListItem(name)
-    listitem.setArt({"icon": "DefaultFolder.png", "thumb": image , "fanart": image})
+    listitem.setArt({"icon": "DefaultFolder.png", "thumb": image })
     vinfo = listitem.getVideoInfoTag()
     vinfo.setMediaType('video')    
     vinfo.setTitle(name)
@@ -85,6 +85,7 @@ def addDir(name, url, mode, image, lang="", description="", imdbId="", isplayabl
         except:                
             vinfo.setPlot(description)
             vinfo.setGenres(["Drama"])
+            listitem.setArt({"fanart": image })
         else:
             # Extract Fanart URL
             fanart_path = movie_data['backdrop_path']
@@ -92,7 +93,7 @@ def addDir(name, url, mode, image, lang="", description="", imdbId="", isplayabl
                 fanArt = image
             else:    
                 fanArt = f'https://image.tmdb.org/t/p/original{fanart_path}'
-            listitem.setArt({"icon": "DefaultFolder.png", "fanart": fanArt})
+            listitem.setArt({"fanart": fanArt})
 
             release_date_str = movie_data['release_date']
             date_object = datetime.datetime.strptime(release_date_str, '%Y-%m-%d').date()
@@ -486,9 +487,7 @@ def scrape_videos(url, pattern):
         next_page = next_matches[-1][1]
     for item in video_matches:
         # addLog(item)
-        movie_name = str(
-            item[3].replace(",", "").encode("ascii", "ignore").decode("ascii")
-        )
+        movie_name = str(item[3])
         movie_def = "shd"
         if "ultrahd" in item[4]:
             movie_def = "uhd"
@@ -503,11 +502,11 @@ def scrape_videos(url, pattern):
             else:
                 imdbId = ''
         else:
-            lang = item[0]
-            movie_id = item[1]            
+            movie_id = item[0] 
+            lang = item[1]
             image = item[2]
             try:
-                description = item[5].encode("ascii", "ignore").decode("ascii")
+                description = html.unescape(item[5])
             except:
                 description = ""
             if "imdb.com" in item[6]:
@@ -667,7 +666,6 @@ def get_loggedin_session(s, language, refererurl):
     html1 = s.get(
         BASE_URL + "/login/?lang=" + language, headers=headers, allow_redirects=False,
     ).text
-
     csrf1 = re.findall("data-pageid=[\"'](.*?)[\"']", html1)[0]
 
     if "&#43;" in csrf1:
