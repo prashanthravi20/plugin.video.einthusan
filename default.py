@@ -3,7 +3,7 @@
 # Credits https://github.com/eintamil/
 
 import base64
-import datetime
+from datetime import datetime
 import json
 import re
 import requests
@@ -89,17 +89,18 @@ def addDir(name, url, mode, image, lang="", description="", imdbId="", movieRele
             except:
                 vinfo.setPlot(description)
                 vinfo.setGenres(["Drama"])
+                vinfo.setYear(int(movieReleaseYear))
                 listitem.setArt({"fanart": image })
             else:
-                setVideoInfo(listitem, movie_data, vinfo, image, description)
+                setVideoInfo(listitem, movie_data, vinfo, image, description, movieReleaseYear)
         else:
-            setVideoInfo(listitem, movie_data, vinfo, image, description)
+            setVideoInfo(listitem, movie_data, vinfo, image, description, movieReleaseYear)
     ok = xbmcplugin.addDirectoryItem(
         HANDLE, url=u, listitem=listitem, isFolder=isfolder
     )
     return ok
 
-def setVideoInfo(listitem, movie_data, vinfo, image, movie_description):
+def setVideoInfo(listitem, movie_data, vinfo, image, movie_description, movieReleaseYear):
     # Extract Fanart URL
     fanart_path = movie_data['backdrop_path']
     if fanart_path == '' or fanart_path == None:
@@ -108,9 +109,7 @@ def setVideoInfo(listitem, movie_data, vinfo, image, movie_description):
         fanArt = f'https://image.tmdb.org/t/p/original{fanart_path}'
     listitem.setArt({"fanart": fanArt})
 
-    release_date_str = movie_data['release_date']
-    date_object = datetime.datetime.strptime(release_date_str, '%Y-%m-%d').date()
-    vinfo.setYear(date_object.year)
+    vinfo.setYear(int(movieReleaseYear))
     vinfo.setRating(movie_data['vote_average'], movie_data['vote_count'])
 
     plot = movie_data['overview']
