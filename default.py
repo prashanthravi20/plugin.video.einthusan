@@ -53,7 +53,7 @@ def addLog(message, level="notice"):
         xbmc.log(str(message), level=xbmc.LOGINFO)
 
 
-def addDir(name, url, mode, image, lang="", description="", imdbId="", isplayable=False, isUhd=False):
+def addDir(name, url, mode, image, lang="", description="", imdbId="", movieReleaseYear=0, isplayable=False, isUhd=False):
     u = (
         URL
         + "?url="
@@ -85,7 +85,7 @@ def addDir(name, url, mode, image, lang="", description="", imdbId="", isplayabl
             movie_data = getMovieDataFromTMDB(imdbId)
         except:
             try:
-                movie_data = getMovieDataByMovieTitleFromTMDB(name, lang)
+                movie_data = getMovieDataByMovieTitleFromTMDB(name, movieReleaseYear, lang)
             except:
                 vinfo.setPlot(description)
                 vinfo.setGenres(["Drama"])
@@ -172,12 +172,12 @@ def getMovieDataFromTMDB(imdbId):
 
     return movie_data
 
-def getMovieDataByMovieTitleFromTMDB(movieTitle, language):
+def getMovieDataByMovieTitleFromTMDB(movieTitle, movieReleaseYear, language):
     API_KEY = __settings__.getSetting("tmdb_api_key")
     movie_name = movieTitle
 
     # Step 1: Search for the movie
-    search_url = f'https://api.themoviedb.org/3/search/movie?api_key={API_KEY}&query={movie_name}'
+    search_url = f'https://api.themoviedb.org/3/search/movie?api_key={API_KEY}&query={movie_name}&primary_release_year={movieReleaseYear}'
     response = requests.get(search_url)
     search_results = response.json()
 
@@ -454,8 +454,8 @@ def browse_results(name, url, language, mode):
 def list_videos(url, pattern):
     video_list = scrape_videos(url, pattern)
 
-    if len(video_list) > 0 and video_list[-1][7] != "":
-        next_page_list = scrape_videos(BASE_URL + video_list[-1][7], pattern)
+    if len(video_list) > 0 and video_list[-1][8] != "":
+        next_page_list = scrape_videos(BASE_URL + video_list[-1][8], pattern)
         for next_page_item in next_page_list:
             video_list.append(next_page_item)
 
@@ -478,6 +478,7 @@ def list_videos(url, pattern):
             video_item[0],
             video_item[5],
             video_item[6],
+            video_item[7],
             isplayable=True,
         )
 
@@ -499,12 +500,13 @@ def list_videos(url, pattern):
                 video_item[0],
                 video_item[5],
                 video_item[6],
+                video_item[7],
                 isplayable=True,
                 isUhd=True
             )
 
-    if len(video_list) > 0 and video_list[-1][7] != "":
-        addDir(">>> Next Page >>>", BASE_URL + video_list[-1][7], 11, "")
+    if len(video_list) > 0 and video_list[-1][8] != "":
+        addDir(">>> Next Page >>>", BASE_URL + video_list[-1][8], 11, "")
 
     xbmcplugin.endOfDirectory(HANDLE)
 
@@ -515,9 +517,9 @@ def scrape_videos(url, pattern):
     results = []
     next_page = ""
     if pattern == "home":
-        regexstr = 'name="newrelease_tab".+?img src="(.+?)".+?href="\/movie\/watch\/(.+?)\/\?lang=(.+?)"><h2>(.+?)<\/h2>.+?i class=(.+?)<\/div><div class="stats">(.+?)<\/div><\/div> <\/div><\/div><\/div>'
+        regexstr = 'name="newrelease_tab".+?img src="(.+?)".+?href="\/movie\/watch\/(.+?)\/\?lang=(.+?)"><h2>(.+?)<\/h2>.+?<div class="info"><p>(.+?)<span>.+?i class=(.+?)<\/div><div class="stats">(.+?)<\/div><\/div> <\/div><\/div><\/div>'
     else:
-        regexstr = '<div class="block1">.*?href=".*?watch\/(.*?)\/\?lang=(.*?)".*?<img src="(.+?)".+?<h3>(.+?)<\/h3>.+?i class(.+?)<p class=".*?synopsis">(.+?)<\/p>(.+?)<\/a> <\/div>'
+        regexstr = '<div class="block1">.*?href=".*?watch\/(.*?)\/\?lang=(.*?)".*?<img src="(.+?)".+?<h3>(.+?)<\/h3>.+?<div class="info"><p>(.*?)<span>.*?i class(.+?)<p class=".*?synopsis">(.+?)<\/p>(.+?)<\/a> <\/div>'
     video_matches = re.findall(regexstr, html1)
     next_matches = re.findall('data-disabled="([^"]*)" href="(.+?)"', html1)
     if len(next_matches) > 0 and next_matches[-1][0] != "true":
@@ -525,16 +527,17 @@ def scrape_videos(url, pattern):
     for item in video_matches:
         # addLog(item)
         movie_name = str(item[3])
+        movie_year = item[4]
         movie_def = "shd"
-        if "ultrahd" in item[4]:
+        if "ultrahd" in item[5]:
             movie_def = "uhd"
         if pattern == "home":
             image = item[0]
             movie_id = item[1]
             lang = item[2]
             description = ""
-            if "imdb.com" in item[5]:
-                imdb_matches = re.findall('imdb.com\/title\/(.+?)\/', item[5])     
+            if "imdb.com" in item[6]:
+                imdb_matches = re.findall('imdb.com\/title\/(.+?)\/', item[6])     
                 imdbId=imdb_matches[0]
             else:
                 imdbId = ''
@@ -543,11 +546,11 @@ def scrape_videos(url, pattern):
             lang = item[1]
             image = item[2]
             try:
-                description = html.unescape(item[5])
+                description = html.unescape(item[6])
             except:
                 description = ""
-            if "imdb.com" in item[6]:
-                imdb_matches = re.findall('imdb.com\/title\/(.+?)\/', item[6])                
+            if "imdb.com" in item[7]:
+                imdb_matches = re.findall('imdb.com\/title\/(.+?)\/', item[7])                
                 imdbId=imdb_matches[0]
             else:
                 imdbId = ''
@@ -560,6 +563,7 @@ def scrape_videos(url, pattern):
                 str(image),
                 str(description),
                 str(imdbId),
+                movie_year,
                 str(next_page),
             )
         )
