@@ -3,7 +3,7 @@
 # Credits https://github.com/eintamil/
 
 import base64
-from datetime import datetime
+import datetime
 import json
 import re
 import requests
