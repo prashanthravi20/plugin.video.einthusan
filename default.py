@@ -82,22 +82,16 @@ def addDir(name, url, mode, image, lang="", description="", imdbId="", movieRele
         vinfo.setMediaType('movie')
         listitem.setProperty("IsPlayable", "true")
         try:
-            movie_data = getMovieDataFromTMDB(imdbId)
+            if imdbId == '' or imdbId == None:
+                movie_data = getMovieDataByMovieTitleFromTMDB(name, movieReleaseYear, lang)                
+            else:
+                movie_data = getMovieDataFromTMDB(imdbId)
+                
         except:
             vinfo.setPlot(description)
             vinfo.setGenres(["Drama"])
             vinfo.setYear(int(movieReleaseYear))
             listitem.setArt({"fanart": image })
-
-            # try:
-            #     movie_data = getMovieDataByMovieTitleFromTMDB(name, movieReleaseYear, lang)
-            # except:
-            #     vinfo.setPlot(description)
-            #     vinfo.setGenres(["Drama"])
-            #     vinfo.setYear(int(movieReleaseYear))
-            #     listitem.setArt({"fanart": image })
-            # else:
-            #     setVideoInfo(listitem, movie_data, vinfo, image, description, movieReleaseYear)
         else:
             setVideoInfo(listitem, movie_data, vinfo, image, description, movieReleaseYear)
     ok = xbmcplugin.addDirectoryItem(
@@ -111,7 +105,7 @@ def setVideoInfo(listitem, movie_data, vinfo, image, movie_description, movieRel
     if fanart_path == '' or fanart_path == None:
         fanArt = image
     else:    
-        fanArt = f'https://image.tmdb.org/t/p/original{fanart_path}' 
+        fanArt = f'https://image.tmdb.org/t/p/w500{fanart_path}' 
     listitem.setArt({"fanart": fanArt})
 
     vinfo.setYear(int(movieReleaseYear))
