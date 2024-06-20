@@ -105,7 +105,7 @@ def setVideoInfo(listitem, movie_data, vinfo, image, movie_description, movieRel
     if fanart_path == '' or fanart_path == None:
         fanArt = image
     else:    
-        fanArt = f'https://image.tmdb.org/t/p/w500{fanart_path}' 
+        fanArt = f'https://image.tmdb.org/t/p/original{fanart_path}' 
     listitem.setArt({"fanart": fanArt})
 
     vinfo.setYear(int(movieReleaseYear))
