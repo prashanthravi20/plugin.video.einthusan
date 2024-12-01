@@ -7,7 +7,7 @@
 
 #### Steps to add source:
 * Go to "System Settings" > "File Manager" > "Add Source"
-[Download File](https://github.com/prashanthravi20/plugin.video.einthusan/blob/a5303832e94110e4cf3674b29403fe307c3a7564/plugin.video.einthusan.zip)
+[plugin.video.einthusan.zip](https://github.com/prashanthravi20/plugin.video.einthusan/blob/a5303832e94110e4cf3674b29403fe307c3a7564/plugin.video.einthusan.zip)
 
 * Type "https://prashanthravi20.github.io/"
 * Enter "pras-einthusan" as name for this media source
