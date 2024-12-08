@@ -591,19 +591,11 @@ def play_video(name, url, language, mode):
     xbmcplugin.endOfDirectory(HANDLE)
 
 
-def get_video(s, language, movieid, hdtype, refererurl, oldejp=""):
-    videourl = "%s/movie/watch/%s/?lang=%s" % (BASE_URL, movieid, language)
-    videourlajax = "%s/ajax/movie/watch/%s/?lang=%s" % (
-        BASE_URL, movieid, language)
+def get_video(s, language, movieid, hdtype, refererurl, defaultejp="default"):
+    video_url = "/movie/watch/%s/?lang=%s" % (movieid, language)
 
-    check_sorry_message = "Our servers are almost maxed"
     check_go_premium = "Go Premium"
-
-    if hdtype == "uhd":
-        videourl = videourl + "&uhd=true"
-        videourlajax = videourlajax + "&uhd=true"
-
-    addLog("get_video: " + str(videourl))
+    check_sorry_message = "SERVERS ARE ALMOST AT CAPACITY"
 
     headers = {
         "Origin": BASE_URL,
@@ -611,22 +603,18 @@ def get_video(s, language, movieid, hdtype, refererurl, oldejp=""):
         "User-Agent": USER_AGENT,
     }
 
-    html1 = s.get(videourl, headers=headers, cookies=s.cookies).text
+    check_premium = s.get(BASE_URL + video_url, headers=headers, cookies=s.cookies, allow_redirects=False)
+    if check_premium.status_code in [301, 302, 307, 308]:
+        addLog("check_premium: " + str(check_premium.status_code))
+        addLog("redirect_location: " + check_premium.headers["location"])
+        video_url = "/premium" + video_url
 
-    useoldejp = 0
-    if re.search(check_sorry_message, html1):
-        addLog(check_sorry_message, "error")
-        retry = xbmcgui.Dialog().yesno(
-            "Server Error",
-            "Sorry. Einthusan servers are almost maxed. Please try later or upgrade to Premium account.",
-            yeslabel="Retry",
-            nolabel="Close",
-            autoclose=5000,
-        )
-        if retry == True:
-            useoldejp = 1
-        else:
-            return False
+    if hdtype == "uhd":
+        video_url = video_url + "&uhd=true"
+
+    addLog("get_video: " + str(video_url))
+
+    html1 = s.get(BASE_URL + video_url, headers=headers, cookies=s.cookies).text
 
     if re.search(check_go_premium, html1):
         addLog(check_go_premium, "error")
@@ -637,25 +625,36 @@ def get_video(s, language, movieid, hdtype, refererurl, oldejp=""):
         return False
 
     ejp = ""
-    if useoldejp == 1:
-        if oldejp == "default" or oldejp == "":
-            addLog("retry failed", "error")
+    if re.search(check_sorry_message, html1):
+        addLog(check_sorry_message, "error")
+        if defaultejp == "default":
+            addLog("no old_ejp", "error")
+            retry = xbmcgui.Dialog().yesno(
+                "Server Error",
+                "Einthusan servers are busy. Please try later or upgrade to Premium account.",
+                yeslabel="Retry",
+                nolabel="Close",
+                autoclose=5000,
+            )
+            return False
+        else:
+            addLog("use old_ejp")
+            ejp = defaultejp
+    else:
+        ejp = re.findall("data-ejpingables=[\"'](.*?)[\"']", html1)[0]
+        if ejp == "":
+            addLog("no new_ejp", "error")
             xbmcgui.Dialog().yesno(
-                "Retry Failed",
-                "Better Luck Next Time",
+                "Loading Failed",
+                "Please try after some time",
                 yeslabel="OK",
                 nolabel="Close",
                 autoclose=5000,
             )
             return False
         else:
-            addLog("retry old_ejp")
-            ejp = oldejp
-    else:
-        addLog("found new_ejp")
-        ejp = re.findall("data-ejpingables=[\"'](.*?)[\"']", html1)[0]
-        __settings__.setSetting("retry_key", ejp)
-        addLog("retry_key updated with new_ejp for better luck next time")
+            addLog("found new_ejp")
+            __settings__.setSetting("retry_key", ejp)
 
     addLog("using_ejp: " + ejp)
     jdata = '{"EJOutcomes":"%s","NativeHLS":false}' % ejp
@@ -672,21 +671,19 @@ def get_video(s, language, movieid, hdtype, refererurl, oldejp=""):
         "gorilla.csrf.Token": csrf1,
     }
 
-    rdata = s.post(videourlajax, headers=headers,
-                   data=postdata, cookies=s.cookies).text
+    rdata = s.post(BASE_URL + "/ajax" + video_url, headers=headers, data=postdata, cookies=s.cookies).text
     ejl = json.loads(rdata)["Data"]["EJLinks"]
     addLog("base64_decodeEInth: " + str(decodeEInth(ejl)))
     url1 = json.loads(base64.b64decode(str(decodeEInth(ejl))))["HLSLink"]
     addLog("url1: " + url1)
-    url2 = url1 + ("|%s&Referer=%s&User-Agent=%s" %
-                   (BASE_URL, videourl, USER_AGENT))
+    url2 = url1 + ("|%s&Referer=%s&User-Agent=%s" % (BASE_URL, video_url, USER_AGENT))
     addLog("url2: " + url2)
     listitem = xbmcgui.ListItem(name)
     thumbnailImage = xbmc.getInfoImage("ListItem.Thumb")
     listitem.setArt({"icon": "DefaultVideo.png", "thumb": thumbnailImage})
     listitem.setProperty("IsPlayable", "true")
     listitem.setPath(url2)
-    xbmcplugin.setResolvedUrl(HANDLE, True, listitem)
+    xbmcplugin.setResolvedUrl(int(sys.argv[1]), True, listitem)
 
     s.close()
 
@@ -703,8 +700,11 @@ def get_loggedin_session(s, language, refererurl):
     }
 
     html1 = s.get(
-        BASE_URL + "/login/?lang=" + language, headers=headers, allow_redirects=False,
+        BASE_URL + "/login/?lang=" + language,
+        headers=headers,
+        allow_redirects=False,
     ).text
+
     csrf1 = re.findall("data-pageid=[\"'](.*?)[\"']", html1)[0]
 
     if "&#43;" in csrf1:
@@ -766,7 +766,7 @@ def get_loggedin_session(s, language, refererurl):
 def decodeEInth(lnk):
     t = 10
     # var t=10,r=e.slice(0,t)+e.slice(e.length-1)+e.slice(t+2,e.length-1)
-    r = lnk[0:t] + lnk[-1] + lnk[t + 2: -1]
+    r = lnk[0:t] + lnk[-1] + lnk[t + 2 : -1]
     return r
 
 
