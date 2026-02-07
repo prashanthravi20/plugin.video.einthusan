@@ -590,8 +590,8 @@ def scrape_videos(url, pattern):
                 imdbId = imdb_matches[0][1]
             else:
                 imdbId = ''
-            else:
-                movie_id = item[0]
+        else:
+            movie_id = item[0]
             lang = item[1]
             image = item[2]
             try:
