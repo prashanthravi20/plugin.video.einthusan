@@ -535,8 +535,8 @@ def scrape_videos(url, pattern):
             lang = item[2]
             description = ""
             if "imdb.com" in item[6]:
-                imdb_matches = re.findall('imdb.com\/title\/(.+?)\/', item[6])     
-                imdbId=imdb_matches[0]
+                imdb_matches = re.findall('imdb.com(.+?)title\/(.+?)\/', item[6]) 
+                imdbId=imdb_matches[0][1]
             else:
                 imdbId = ''
         else:
@@ -548,8 +548,8 @@ def scrape_videos(url, pattern):
             except:
                 description = ""
             if "imdb.com" in item[7]:
-                imdb_matches = re.findall('imdb.com\/title\/(.+?)\/', item[7])                
-                imdbId=imdb_matches[0]
+                imdb_matches = re.findall('imdb.com(.+?)title\/(.+?)\/', item[7])  
+                imdbId=imdb_matches[0][1]
             else:
                 imdbId = ''
         results.append(
