@@ -1,0 +1,36 @@
+name: Build and attach to release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.x'
+
+      - name: Build addon and repository
+        run: |
+          python3 scripts/package_addon.py
+          python3 scripts/build_repo.py
+
+      - name: Get version from tag
+        id: version
+        run: echo "tag=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+
+      - name: Create Release
+        uses: ncipollo/release-action@v1
+        with:
+          tag: ${{ steps.version.outputs.tag }}
+          artifacts: "dist/plugin.video.einthusan-*.zip,dist/repository.einthusan-*.zip,dist/addons.xml,dist/addons.xml.md5"
+          body: "Kodi addon and repository release"
+          draft: false
+          prerelease: false
