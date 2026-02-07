@@ -11,6 +11,7 @@ import sys
 import xbmcaddon
 import xbmcgui
 import xbmcplugin
+import xbmc
 
 # py_2x_3x
 import html
@@ -29,10 +30,50 @@ HANDLE = int(sys.argv[1])
 
 __settings__ = xbmcaddon.Addon(id="plugin.video.einthusan")
 BASE_URL = __settings__.getSetting("base_url")
-USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/72.0.3626.121 Safari/537.36"
+USER_AGENT = (
+    "Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 "
+    "(KHTML, like Gecko) Chrome/72.0.3626.121 Safari/537.36"
+)
 CDN_PREFIX = "cdn"
 CDN_ROOT = ".io"
 CDN_BASE_URL = "einthusan" + CDN_ROOT
+
+
+def safe_get(url, **kwargs):
+    """Wrapper around requests.get that returns text or empty string and logs errors."""
+    try:
+        r = requests.get(url, timeout=10, **kwargs)
+        r.raise_for_status()
+        return r.text
+    except requests.RequestException as e:
+        addLog(f"HTTP GET error: {e}", "error")
+        return ""
+
+
+def safe_post(url, data=None, **kwargs):
+    try:
+        r = requests.post(url, data=data, timeout=10, **kwargs)
+        r.raise_for_status()
+        return r.text
+    except requests.RequestException as e:
+        addLog(f"HTTP POST error: {e}", "error")
+        return ""
+
+
+def build_plugin_url(params):
+    """Build plugin URL from a params dict and return full plugin URL string."""
+    return URL + "?" + urllib.parse.urlencode(params, doseq=True)
+
+
+def create_listitem(title, image, isUhd=False):
+    """Create a preconfigured xbmcgui.ListItem for a movie entry."""
+    movieTitle = title + "[COLOR blue] - Ultra HD[/COLOR]" if isUhd else title
+    listitem = xbmcgui.ListItem(movieTitle)
+    listitem.setArt({"icon": "DefaultFolder.png", "thumb": image})
+    vinfo = listitem.getVideoInfoTag()
+    vinfo.setMediaType('video')
+    vinfo.setTitle(movieTitle)
+    return listitem, vinfo
 
 
 # locationStr = xbmcplugin.getSetting(HANDLE, 'location')
@@ -53,59 +94,62 @@ def addLog(message, level="notice"):
         xbmc.log(str(message), level=xbmc.LOGINFO)
 
 
-def addDir(name, url, mode, image, lang="", description="", imdbId="", movieReleaseYear=0, isplayable=False, isUhd=False):
-    u = (
-        URL
-        + "?url="
-        + urllib.parse.quote_plus(url)
-        + "&mode="
-        + str(mode)
-        + "&name="
-        + urllib.parse.quote_plus(name)
-        + "&lang="
-        + urllib.parse.quote_plus(lang)
-        + "&description="
-        + urllib.parse.quote_plus(description)
-    )
+def addDir(
+    name,
+    url,
+    mode,
+    image,
+    lang="",
+    description="",
+    imdbId="",
+    movieReleaseYear=0,
+    isplayable=False,
+    isUhd=False,
+):
+    params = {
+        "url": url,
+        "mode": str(mode),
+        "name": name,
+        "lang": lang,
+        "description": description,
+    }
+    u = build_plugin_url(params)
 
     xbmcplugin.setContent(HANDLE, 'movies')
-    movieTitle = name + "[COLOR blue] - Ultra HD[/COLOR]" if isUhd==True else name
-    listitem = xbmcgui.ListItem(movieTitle)
-    listitem.setArt({"icon": "DefaultFolder.png", "thumb": image })
-    vinfo = listitem.getVideoInfoTag()
-    vinfo.setMediaType('video')
-    vinfo.setTitle(movieTitle)
-    
+    listitem, vinfo = create_listitem(name, image, isUhd)
+
     isfolder = True
     if isplayable:
         isfolder = False
         vinfo.setMediaType('movie')
         listitem.setProperty("IsPlayable", "true")
         try:
-            if imdbId == '' or imdbId == None:
-                movie_data = getMovieDataByMovieTitleFromTMDB(name, movieReleaseYear, lang)                
+            if not imdbId:
+                movie_data = getMovieDataByMovieTitleFromTMDB(name, movieReleaseYear, lang)
             else:
                 movie_data = getMovieDataFromTMDB(imdbId)
-                
-        except:
+        except Exception as e:
+            addLog(f"TMDB lookup failed: {e}", "error")
             vinfo.setPlot(description)
             vinfo.setGenres(["Drama"])
-            vinfo.setYear(int(movieReleaseYear))
-            listitem.setArt({"fanart": image })
+            try:
+                vinfo.setYear(int(movieReleaseYear))
+            except Exception:
+                pass
+            listitem.setArt({"fanart": image})
         else:
             setVideoInfo(listitem, movie_data, vinfo, image, description, movieReleaseYear)
-    ok = xbmcplugin.addDirectoryItem(
-        HANDLE, url=u, listitem=listitem, isFolder=isfolder
-    )
+
+    ok = xbmcplugin.addDirectoryItem(HANDLE, url=u, listitem=listitem, isFolder=isfolder)
     return ok
 
 def setVideoInfo(listitem, movie_data, vinfo, image, movie_description, movieReleaseYear):
     # Extract Fanart URL
-    fanart_path = movie_data['backdrop_path']
-    if fanart_path == '' or fanart_path == None:
+    fanart_path = movie_data.get('backdrop_path')
+    if not fanart_path:
         fanArt = image
-    else:    
-        fanArt = f'https://image.tmdb.org/t/p/original{fanart_path}' 
+    else:
+        fanArt = f'https://image.tmdb.org/t/p/original{fanart_path}'
     listitem.setArt({"fanart": fanArt})
 
     vinfo.setYear(int(movieReleaseYear))
@@ -117,9 +161,9 @@ def setVideoInfo(listitem, movie_data, vinfo, image, movie_description, movieRel
     vinfo.setPlot(plot)
     vinfo.setOriginalTitle(movie_data['original_title'])
 
-    # Convert JSON data to a Python object 
+    # Convert JSON data to a Python object
     genreTempStr = str(movie_data["genres"])
-    genreTempStr = genreTempStr.replace("\'", "\"")
+    genreTempStr = genreTempStr.replace("'", '"')
     genresObjArray = json.loads(genreTempStr)
     genresArray = [genre["name"] for genre in genresObjArray]
     if len(genresArray)==0:
@@ -129,24 +173,31 @@ def setVideoInfo(listitem, movie_data, vinfo, image, movie_description, movieRel
     durationMin = movie_data['runtime']
 
     vinfo.setDuration(durationMin*60)
-    vinfo.setIMDBNumber(movie_data['imdb_id'])            
+    vinfo.setIMDBNumber(movie_data['imdb_id'])
 
 
 def get_params():
-    param = []
-    paramstring = sys.argv[2]
-    if len(paramstring) >= 2:
-        params = sys.argv[2]
-        cleanedparams = params.replace("?", "")
-        if params[len(params) - 1] == "/":
-            params = params[0: len(params) - 2]
-        pairsofparams = cleanedparams.split("&")
-        param = {}
-        for i in range(len(pairsofparams)):
-            splitparams = {}
-            splitparams = pairsofparams[i].split("=")
-            if (len(splitparams)) == 2:
-                param[splitparams[0]] = splitparams[1]
+    """Parse the plugin query string into a dict of single values.
+
+    Returns a mapping of parameter name -> value (strings).
+    """
+    param = {}
+    try:
+        paramstring = sys.argv[2]
+    except Exception:
+        return param
+
+    if not paramstring:
+        return param
+
+    cleaned = paramstring.lstrip('?')
+    # parse_qs returns lists for each key; keep only first value
+    parsed = urllib.parse.parse_qs(cleaned, keep_blank_values=True)
+    for k, v in parsed.items():
+        if isinstance(v, list) and len(v) > 0:
+            param[k] = v[0]
+        else:
+            param[k] = v
     return param
 
 def getMovieDataFromTMDB(imdbId):
@@ -170,6 +221,7 @@ def getMovieDataFromTMDB(imdbId):
 
     return movie_data
 
+
 def getMovieDataByMovieTitleFromTMDB(movieTitle, movieReleaseYear, language):
     API_KEY = __settings__.getSetting("tmdb_api_key")
     movie_name = movieTitle
@@ -185,15 +237,16 @@ def getMovieDataByMovieTitleFromTMDB(movieTitle, movieReleaseYear, language):
         if len(filtered_movies) > 1:
             raise Exception("More than one results returned")
         movie_id = filtered_movies[0]['id']
-        
+
         # Step 2: Get movie details using the movie ID
         movie_url = f'https://api.themoviedb.org/3/movie/{movie_id}?api_key={API_KEY}'
         movie_response = requests.get(movie_url)
         movie_data = movie_response.json()
-        
+
         return movie_data
     else:
         raise Exception("No results returned")
+
 
 def select_lang(name, url, language, mode):
     addLog("BASE_URL: " + BASE_URL)
@@ -207,20 +260,20 @@ def select_lang(name, url, language, mode):
         ("marathi", "", "Marathi"),
         ("punjabi", "", "Punjabi"),
     ]
-    lang_pattern = '<li><a href=".*?\?lang=(.+?)"><div.*?div><img src="(.+?)"><p class=".*?-bg">(.+?)<\/p>'
-    try:
-        html1 = requests.get(BASE_URL).text
-        lang_matches = re.findall(lang_pattern, html1)
-        if len(lang_matches) == 0:
-            addLog("check lang_pattern", "error")
-        else:
-            languages = lang_matches
-    except:
+    lang_pattern = r'<li><a href=".*?\?lang=(.+?)"><div.*?div><img src="(.+?)"><p class=".*?-bg">(.+?)</p>'
+    html1 = safe_get(BASE_URL)
+    if not html1:
         addLog("check BASE_URL", "error")
         xbmcgui.Dialog().ok(
             "Base URL Error",
             "Please check and update the Base URL in Addon Settings and restart the addon.",
         )
+    else:
+        lang_matches = re.findall(lang_pattern, html1)
+        if len(lang_matches) == 0:
+            addLog("check lang_pattern", "error")
+        else:
+            languages = lang_matches
     for lang_item in languages:
         lang = str(lang_item[0])
         title = str(lang_item[2])
@@ -340,7 +393,7 @@ def submenu_decade(name, url, language, mode):
         repr(x) for x in reversed(list(range(1940, datetime.date.today().year + 1, 10)))
     ]
     for attr_value in values:
-        if attr_value != None:
+        if attr_value is not None:
             addDir(
                 str(attr_value) + "s", postData +
                 str(attr_value), 11, "DefaultYear.png"
@@ -354,7 +407,7 @@ def submenu_years(name, url, language, mode):
         repr(x) for x in reversed(list(range(1940, datetime.date.today().year + 1)))
     ]
     for attr_value in values:
-        if attr_value != None:
+        if attr_value is not None:
             addDir(attr_value, postData + str(attr_value), 11, "DefaultYear.png")
     xbmcplugin.endOfDirectory(HANDLE)
 
@@ -412,17 +465,13 @@ def menu_cast(name, url, language, mode):
 
 
 def get_cast_helper(url, attr, language):
-    referurl = url
-    html = requests.get(url).text
-    match = re.compile(
-        '<a href="/movie/results/\?find=Cast.*?id=(.*?)&amp;lang=.*?role=(.*?)"><img.*?src="(.*?)">.*?<label>(.*?)</label>').findall(html)
+    html = safe_get(url)
+    match = re.compile(r'<a href="/movie/results/\?find=Cast.*?id=(.*?)&amp;lang=.*?role=(.*?)"><img.*?src="(.*?)">.*?<label>(.*?)</label>').findall(html)
     # Bit of a hack
     castlist = []
     for actorid, role, image, name in match:
         if 'http' not in image:
             image = 'http:' + image
-        else:
-            image = image
         if (role == attr):
             castlist.append(
                 {'actorid': actorid, 'role': role, 'image': image, 'name': name})
@@ -510,14 +559,16 @@ def list_videos(url, pattern):
 
 
 def scrape_videos(url, pattern):
-    html1 = requests.get(url).text
+    html1 = safe_get(url)
     # addLog(html1)
     results = []
     next_page = ""
     if pattern == "home":
-        regexstr = 'name="newrelease_tab".+?img src="(.+?)".+?href="\/movie\/watch\/(.+?)\/\?lang=(.+?)"><h2>(.+?)<\/h2>.+?<div class="info"><p>(.+?)<span>.+?i class=(.+?)<\/div><div class="stats">(.+?)<\/div><\/div> <\/div><\/div><\/div>'
+        regexstr = (r'name="newrelease_tab".+?img src="(.+?)".+?href="/movie/watch/(.+?)/\?lang=(.+?)"><h2>(.+?)</h2>'
+                    r'.+?<div class="info"><p>(.+?)<span>.+?i class=(.+?)</div><div class="stats">(.+?)</div></div> </div></div></div>')
     else:
-        regexstr = '<div class="block1">.*?href=".*?watch\/(.*?)\/\?lang=(.*?)".*?<img src="(.+?)".+?<h3>(.+?)<\/h3>.+?<div class="info"><p>(.*?)<span>.*?i class(.+?)<p class=".*?synopsis">(.+?)<\/p>(.+?)<\/a> <\/div>'
+        regexstr = (r'<div class="block1">.*?href=".*?watch/(.*?)/\?lang=(.*?)".*?<img src="(.+?)".+?<h3>(.+?)</h3>'
+                    r'.+?<div class="info"><p>(.*?)<span>.*?i class(.+?)<p class=".*?synopsis">(.+?)</p>(.+?)</a> </div>')
     video_matches = re.findall(regexstr, html1)
     next_matches = re.findall('data-disabled="([^"]*)" href="(.+?)"', html1)
     if len(next_matches) > 0 and next_matches[-1][0] != "true":
@@ -535,21 +586,21 @@ def scrape_videos(url, pattern):
             lang = item[2]
             description = ""
             if "imdb.com" in item[6]:
-                imdb_matches = re.findall('imdb.com(.+?)title\/(.+?)\/', item[6]) 
-                imdbId=imdb_matches[0][1]
+                imdb_matches = re.findall(r'imdb.com(.+?)title/(.+?)/', item[6])
+                imdbId = imdb_matches[0][1]
             else:
                 imdbId = ''
-        else:
-            movie_id = item[0] 
+            else:
+                movie_id = item[0]
             lang = item[1]
             image = item[2]
             try:
                 description = html.unescape(item[6])
-            except:
+            except Exception:
                 description = ""
             if "imdb.com" in item[7]:
-                imdb_matches = re.findall('imdb.com(.+?)title\/(.+?)\/', item[7])  
-                imdbId=imdb_matches[0][1]
+                imdb_matches = re.findall(r'imdb.com(.+?)title/(.+?)/', item[7])
+                imdbId = imdb_matches[0][1]
             else:
                 imdbId = ''
         results.append(
@@ -585,7 +636,7 @@ def play_video(name, url, language, mode):
 
     result = get_video(s, lang, movieid, hdtype, refurl, RETRY_KEY)
 
-    if result == False:
+    if result is False:
         return False
 
     xbmcplugin.endOfDirectory(HANDLE)
@@ -629,7 +680,7 @@ def get_video(s, language, movieid, hdtype, refererurl, defaultejp="default"):
         addLog(check_sorry_message, "error")
         if defaultejp == "default":
             addLog("no old_ejp", "error")
-            retry = xbmcgui.Dialog().yesno(
+            xbmcgui.Dialog().yesno(
                 "Server Error",
                 "Einthusan servers are busy. Please try later or upgrade to Premium account.",
                 yeslabel="Retry",
@@ -641,7 +692,7 @@ def get_video(s, language, movieid, hdtype, refererurl, defaultejp="default"):
             addLog("use old_ejp")
             ejp = defaultejp
     else:
-        ejp = re.findall("data-ejpingables=[\"'](.*?)[\"']", html1)[0]
+        ejp = re.findall(r"data-ejpingables=['\"](.*?)['\"]", html1)[0]
         if ejp == "":
             addLog("no new_ejp", "error")
             xbmcgui.Dialog().yesno(
@@ -658,7 +709,7 @@ def get_video(s, language, movieid, hdtype, refererurl, defaultejp="default"):
 
     addLog("using_ejp: " + ejp)
     jdata = '{"EJOutcomes":"%s","NativeHLS":false}' % ejp
-    csrf1 = re.findall("data-pageid=[\"'](.*?)[\"']", html1)[0]
+    csrf1 = re.findall(r"data-pageid=['\"](.*?)['\"]", html1)[0]
     # py_2x_3x
     csrf1 = html.unescape(csrf1)
     # csrf1 = HTMLParser.HTMLParser().unescape(csrf1).encode("utf-8")
@@ -705,7 +756,7 @@ def get_loggedin_session(s, language, refererurl):
         allow_redirects=False,
     ).text
 
-    csrf1 = re.findall("data-pageid=[\"'](.*?)[\"']", html1)[0]
+    csrf1 = re.findall(r"data-pageid=['\"](.*?)['\"]", html1)[0]
 
     if "&#43;" in csrf1:
         csrf1 = csrf1.replace("&#43;", "+")
@@ -726,7 +777,7 @@ def get_loggedin_session(s, language, refererurl):
         "gorilla.csrf.Token": csrf1,
     }
 
-    html2 = s.post(
+    s.post(
         BASE_URL + "/ajax/login/?lang=" + language,
         headers=headers,
         cookies=s.cookies,
@@ -742,7 +793,7 @@ def get_loggedin_session(s, language, refererurl):
         cookies=s.cookies,
     ).text
 
-    csrf3 = re.findall("data-pageid=[\"'](.*?)[\"']", html3)[0]
+    csrf3 = re.findall(r"data-pageid=['\"](.*?)['\"]", html3)[0]
 
     postdata4 = {
         "xEvent": "notify",
@@ -753,7 +804,7 @@ def get_loggedin_session(s, language, refererurl):
         "gorilla.csrf.Token": csrf3,
     }
 
-    html4 = s.post(
+    s.post(
         BASE_URL + "/ajax/account/?lang=" + language,
         headers=headers,
         cookies=s.cookies,
@@ -785,30 +836,14 @@ mode = 0
 language = ""
 description = ""
 
+url = urllib.parse.unquote_plus(params.get("url", "")) if params.get("url") else ""
+name = urllib.parse.unquote_plus(params.get("name", "")) if params.get("name") else ""
 try:
-    url = urllib.parse.unquote_plus(params["url"])
-except:
-    pass
-
-try:
-    name = urllib.parse.unquote_plus(params["name"])
-except:
-    pass
-
-try:
-    mode = int(params["mode"])
-except:
-    pass
-
-try:
-    language = urllib.parse.unquote_plus(params["lang"])
-except:
-    pass
-
-try:
-    description = urllib.parse.unquote_plus(params["description"])
-except:
-    pass
+    mode = int(params.get("mode", 0))
+except (ValueError, TypeError):
+    mode = 0
+language = urllib.parse.unquote_plus(params.get("lang", "")) if params.get("lang") else ""
+description = urllib.parse.unquote_plus(params.get("description", "")) if params.get("description") else ""
 
 function_map = {}
 
