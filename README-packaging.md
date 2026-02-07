@@ -1,4 +1,6 @@
 Packaging and installing the Kodi addon
+```markdown
+Packaging and installing the Kodi addon
 
 - Build the zip: run `python3 scripts/package_addon.py` from the repository root.
 - The script reads `src/addon.xml` to determine the addon id and version and writes the zip to `dist/`.
@@ -28,3 +30,32 @@ Notes and tips
 If you want, I can:
 - Add a small GitHub Actions workflow to build `dist/` and publish it to `gh-pages` automatically.
 - Change the repository package name or versioning scheme.
+
+GitHub Actions and hosting example
+
+- A workflow has been added at `.github/workflows/publish-gh-pages.yml` which:
+	- Runs on pushes to `main`/`master`.
+	- Builds the addon zip and `addons.xml` (`scripts/package_addon.py` and `scripts/build_repo.py`).
+	- Publishes the `dist/` directory to the `gh-pages` branch using `peaceiris/actions-gh-pages`.
+
+Example URLs (replace placeholders)
+
+- GitHub Pages (recommended):
+	- addons.xml: https://<your-github-username>.github.io/<repo-name>/addons.xml
+	- repository zip: https://<your-github-username>.github.io/<repo-name>/repository.einthusan-1.0.0.zip
+
+- Raw GitHub (alternative):
+	- addons.xml: https://raw.githubusercontent.com/<your-github-username>/<repo-name>/gh-pages/addons.xml
+
+How to add the repo to Kodi
+
+- In Kodi: Add source → enter the base URL where `addons.xml` is hosted (e.g. `https://<username>.github.io/<repo-name>/`).
+- Then Add-ons → Install from zip file → browse to that source and install `repository.einthusan-1.0.0.zip`.
+
+Notes
+
+- Enable GitHub Pages for the repository and set the source to the `gh-pages` branch (Repository → Settings → Pages).
+- The workflow uses the provided `GITHUB_TOKEN` so no extra secrets are required.
+- If you want, I can add a CI workflow that only publishes on tag or release events instead of every push.
+
+``` 

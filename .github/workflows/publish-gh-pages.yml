@@ -1,0 +1,32 @@
+name: Build and publish Kodi repo
+
+on:
+  push:
+    branches: [ main, master ]
+
+jobs:
+  build-and-publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.x'
+
+      - name: Build package and repository
+        run: |
+          python3 scripts/package_addon.py
+          python3 scripts/build_repo.py
+
+      - name: Publish dist/ to gh-pages
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./dist
+          keep_files: false
+          commit_message: Publish dist via GitHub Actions
