@@ -1,0 +1,10 @@
+# patterns to exclude from the zip/extraction
+# Examples:
+# ignore the vijaijson workspace file
+vijaijson
+# python cache
+*.pyc
+# git metadata
+.git
+# dist output
+dist
