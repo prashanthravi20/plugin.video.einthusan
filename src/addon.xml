@@ -11,6 +11,12 @@
     <extension point="xbmc.python.pluginsource"
                library="default.py">
         <provides>video</provides>
+        <dir>
+        <info compressed="false">https://raw.githubusercontent.com/prashanthravi20/plugin.video.einthusan/master/dist/addons.xml</info>
+        <checksum>https://raw.githubusercontent.com/prashanthravi20/plugin.video.einthusan/master/dist/addons.xml.md5</checksum>
+        <datadir zip="true">https://raw.githubusercontent.com/prashanthravi20/plugin.video.einthusan/master/dist/</datadir>
+        </dir>
+
     </extension>
     <extension point="xbmc.addon.metadata">
         <platform>all</platform>
