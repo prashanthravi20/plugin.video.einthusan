@@ -1,4 +1,4 @@
-# Prashanth Einthusan Kodi Repository [[https://prashanthravi20.github.io/]](https://prashanthravi20.github.io/)
+# Prashanth Einthusan Kodi Repository [(https://prashanthravi20.github.io/plugin.video.einthusan/)]
 
 #### Enable Installation of add-ons from unknown sources:
 * Go to "System Settings" > "System" > "Add-ons"
